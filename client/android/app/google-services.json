@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "863516411610",
+    "project_id": "yanafssi",
+    "firebase_url": "https://yanafssi-default-rtdb.europe-west1.firebasedatabase.app",
+    "storage_bucket": "yanafssi.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:863516411610:android:13514d3b564aaf301a87e3",
+        "android_client_info": {
+          "package_name": "com.example.client"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5KHM24xcWss0r1Fo4o1LIWwHvLnjsjXo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
