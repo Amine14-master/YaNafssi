@@ -191,3 +191,4 @@ class _HelperAuthScreenState extends State<HelperAuthScreen> {
       ),
     );
   }
+}
