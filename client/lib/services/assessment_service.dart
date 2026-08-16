@@ -290,45 +290,50 @@ class AssessmentService {
     String targetLanguage,
   ) async {
     try {
+      final apiKey = 'AIzaSyALLDHf2L4rNWr-8RxiKOyzDM7S2ujSd4s';
       final prompt = {
-        'model': 'google/gemini-flash-1.5', // Using a fast model
-        'messages': [
-          {
-            'role': 'system',
-            'content':
-                'You are a helpful translator. Translate the following JSON structure of assessment questions to $targetLanguage. Maintain the exact JSON structure. Only translate the "text", "title", "goal" and "options" fields. Do not change IDs or Types. Return ONLY the JSON.',
-          },
+        'system_instruction': {
+          'parts': [
+            {
+              'text':
+                  'You are a helpful translator. Translate the following JSON structure of assessment questions to $targetLanguage. Maintain the exact JSON structure. Only translate the "text", "title", "goal" and "options" fields. Do not change IDs or Types. Return ONLY the JSON.',
+            }
+          ]
+        },
+        'contents': [
           {
             'role': 'user',
-            'content': jsonEncode(
-              stages
-                  .map(
-                    (s) => {
-                      'title': s.title,
-                      'goal': s.goal,
-                      'questions': s.questions
-                          .map(
-                            (q) => {
-                              'id': q.id,
-                              'text': q.text,
-                              'type': q.type.toString().split('.').last,
-                              'options': q.options,
-                            },
-                          )
-                          .toList(),
-                    },
-                  )
-                  .toList(),
-            ),
-          },
+            'parts': [
+              {
+                'text': jsonEncode(
+                  stages
+                      .map(
+                        (s) => {
+                          'title': s.title,
+                          'goal': s.goal,
+                          'questions': s.questions
+                              .map(
+                                (q) => {
+                                  'id': q.id,
+                                  'text': q.text,
+                                  'type': q.type.toString().split('.').last,
+                                  'options': q.options,
+                                },
+                              )
+                              .toList(),
+                        },
+                      )
+                      .toList(),
+                ),
+              }
+            ]
+          }
         ],
       };
 
       final response = await http.post(
-        Uri.parse('https://openrouter.ai/api/v1/chat/completions'),
+        Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key=$apiKey'),
         headers: {
-          'Authorization':
-              'Bearer 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',
           'Content-Type': 'application/json',
         },
         body: jsonEncode(prompt),
@@ -336,7 +341,7 @@ class AssessmentService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        String content = data['choices'][0]['message']['content'];
+        String content = data['candidates'][0]['content']['parts'][0]['text'];
 
         // Clean up markdown if present
         if (content.contains('```')) {
@@ -368,6 +373,8 @@ class AssessmentService {
             }).toList(),
           );
         }).toList();
+      } else {
+        print('OpenRouter Error: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('Error adapting questions: $e');

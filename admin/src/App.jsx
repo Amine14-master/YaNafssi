@@ -6,8 +6,9 @@ import Requests from './components/Requests';
 import Rooms from './components/Rooms';
 import Hooked from './components/Hooked';
 import { Users, Video, FileCheck, Activity } from 'lucide-react';
-import { collection, getCountFromServer } from 'firebase/firestore';
+import { ref, get } from 'firebase/database';
 import { db } from './firebase';
+import { motion } from 'framer-motion';
 import './App.css';
 
 function App() {
@@ -25,14 +26,19 @@ function App() {
 
   const fetchStats = async () => {
     try {
-      const helpersCount = await getCountFromServer(collection(db, 'specialist_requests'));
-      const roomsCount = await getCountFromServer(collection(db, 'rooms'));
-      // const hookedCount = await getCountFromServer(collection(db, 'hooked_users')); // Uncomment when collection exists
+      const helpersSnap = await get(ref(db, 'specialist_requests'));
+      const helpersCount = helpersSnap.exists() ? Object.keys(helpersSnap.val()).length : 0;
+
+      const roomsSnap = await get(ref(db, 'rooms'));
+      const roomsCount = roomsSnap.exists() ? Object.keys(roomsSnap.val()).filter(key => roomsSnap.val()[key].status === 'active').length : 0;
+
+      const hookedSnap = await get(ref(db, 'hooked_users'));
+      const hookedCount = hookedSnap.exists() ? Object.keys(hookedSnap.val()).length : 0;
 
       setStats([
-        { title: 'Total Helpers', value: helpersCount.data().count.toString(), change: 12.5, icon: Users, trend: 'up' },
-        { title: 'Active Rooms', value: roomsCount.data().count.toString(), change: 8.2, icon: Video, trend: 'up' },
-        { title: 'Hooked Users', value: '0', change: 0, icon: FileCheck, trend: 'neutral' }, // Placeholder
+        { title: 'Total Helpers', value: helpersCount.toString(), change: 12.5, icon: Users, trend: 'up' },
+        { title: 'Active Rooms', value: roomsCount.toString(), change: 8.2, icon: Video, trend: 'up' },
+        { title: 'Hooked Users', value: hookedCount.toString(), change: 0, icon: FileCheck, trend: 'neutral' },
         { title: 'Total Activity', value: 'Active', change: 4.1, icon: Activity, trend: 'up' },
       ]);
     } catch (error) {
@@ -53,7 +59,12 @@ function App() {
 
     // Default Dashboard Content
     return (
-      <div className="dashboard-content p-6">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="dashboard-content p-6"
+      >
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-primary">Dashboard Overview</h2>
           <p className="text-gray-500">Welcome back, here's what's happening today.</p>
@@ -61,17 +72,29 @@ function App() {
 
         <div className="stats-grid">
           {stats.map((stat, index) => (
-            <StatsCard key={index} {...stat} />
+            <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+            >
+                <StatsCard {...stat} />
+            </motion.div>
           ))}
         </div>
 
-        <div className="recent-orders-section mt-8">
+        <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="recent-orders-section mt-8"
+        >
           <h3 className="text-xl font-bold mb-4">Recent Activity</h3>
           <div className="card overflow-hidden bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center text-gray-500">
             <p>Activity feed coming soon...</p>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     );
   };
 

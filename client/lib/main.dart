@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shimmer/shimmer.dart';
@@ -401,27 +401,29 @@ class _HelpMeAnalysisScreenState extends State<HelpMeAnalysisScreen> {
         });
       }
 
+      final apiKey = 'AIzaSyALLDHf2L4rNWr-8RxiKOyzDM7S2ujSd4s';
       final response = await http.post(
-        Uri.parse('https://openrouter.ai/api/v1/chat/completions'),
+        Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key=$apiKey'),
         headers: {
-          'Authorization':
-              'Bearer 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',
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          'model': 'google/gemini-flash-1.5', // Supports vision
-          'messages': [
-            {'role': 'user', 'content': content},
-          ],
+          'contents': [
+            {
+              'role': 'user',
+              'parts': [{'text': content}]
+            }
+          ]
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
-          _analysisResult = data['choices'][0]['message']['content'];
+          _analysisResult = data['candidates'][0]['content']['parts'][0]['text'];
         });
       } else {
+        print('Gemini API Error: ${response.statusCode} - ${response.body}');
         throw Exception('Analysis failed: ${response.statusCode}');
       }
     } catch (e) {

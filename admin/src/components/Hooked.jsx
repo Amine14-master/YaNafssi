@@ -1,42 +1,52 @@
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { ref, onValue } from 'firebase/database';
 import { db } from '../firebase';
-import { User, Activity } from 'lucide-react';
+import { User, Activity, Flame } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const Hooked = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchUsers();
+        const usersRef = ref(db, 'hooked_users');
+        const unsubscribe = onValue(usersRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const usersList = Object.entries(data).map(([id, userData]) => ({
+                    id,
+                    ...userData
+                }));
+                // Sort by joinedAt descending
+                usersList.sort((a, b) => (b.joinedAt || 0) - (a.joinedAt || 0));
+                setUsers(usersList);
+            } else {
+                setUsers([]);
+            }
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching hooked users: ", error);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
     }, []);
 
-    const fetchUsers = async () => {
-        try {
-            // Assuming a 'hooked_users' collection exists or we might want to query 'users'
-            // For now, let's try to fetch from 'hooked_users'
-            const q = query(collection(db, 'hooked_users'), orderBy('joinedAt', 'desc'));
-            const querySnapshot = await getDocs(q);
-            const data = querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setUsers(data);
-        } catch (error) {
-            console.error("Error fetching hooked users: ", error);
-            // Fallback to empty list if collection doesn't exist
-            setUsers([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     if (loading) {
-        return <div className="p-6">Loading...</div>;
+        return (
+            <div className="flex items-center justify-center p-12">
+                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
     }
 
     return (
-        <div className="p-6">
+        <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="p-6"
+        >
             <div className="mb-6">
                 <h2 className="text-2xl font-bold text-primary">Hooked Users</h2>
                 <p className="text-gray-500">Users seeking support and recovery.</p>
@@ -55,16 +65,29 @@ const Hooked = () => {
                     <tbody>
                         {users.length === 0 ? (
                             <tr>
-                                <td colSpan="4" className="p-8 text-center text-gray-500">
-                                    No users found in Hooked program.
+                                <td colSpan="4" className="p-8">
+                                    <motion.div 
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        className="flex flex-col items-center justify-center text-gray-500"
+                                    >
+                                        <Activity size={48} className="text-gray-300 mb-4" />
+                                        <p className="text-lg">No users found in Hooked program.</p>
+                                    </motion.div>
                                 </td>
                             </tr>
                         ) : (
-                            users.map((user) => (
-                                <tr key={user.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
+                            users.map((user, index) => (
+                                <motion.tr 
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                                    key={user.id} 
+                                    className="border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors"
+                                >
                                     <td className="p-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                                            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm">
                                                 <User size={20} />
                                             </div>
                                             <div>
@@ -74,26 +97,28 @@ const Hooked = () => {
                                         </div>
                                     </td>
                                     <td className="p-4">
-                                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                        <span className={`px-3 py-1 rounded-full text-xs font-medium shadow-sm border ${
+                                            user.status === 'Active' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-700 border-gray-200'
+                                        }`}>
                                             {user.status || 'Active'}
                                         </span>
                                     </td>
-                                    <td className="p-4 text-gray-500">
-                                        {user.joinedAt?.toDate().toLocaleDateString() || 'N/A'}
+                                    <td className="p-4 text-gray-500 text-sm">
+                                        {user.joinedAt ? new Date(user.joinedAt).toLocaleDateString() : 'N/A'}
                                     </td>
                                     <td className="p-4">
-                                        <div className="flex items-center gap-2 text-emerald-600">
-                                            <Activity size={16} />
-                                            <span className="text-sm font-medium">{user.streak || 0} Days Streak</span>
+                                        <div className="flex items-center gap-2 text-orange-500">
+                                            <Flame size={18} />
+                                            <span className="text-sm font-bold">{user.streak || 0} Days</span>
                                         </div>
                                     </td>
-                                </tr>
+                                </motion.tr>
                             ))
                         )}
                     </tbody>
                 </table>
             </div>
-        </div>
+        </motion.div>
     );
 };
 

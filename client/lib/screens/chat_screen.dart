@@ -31,39 +31,49 @@ class _ChatScreenState extends State<ChatScreen> {
       _isLoading = true;
     });
 
+    final languageCode = LocalizationService().currentLocale.languageCode;
+    final country = LocalizationService().selectedCountry ?? 'Algeria';
+    String targetLanguage = 'English';
+    if (languageCode == 'ar' && country == 'Algeria') {
+      targetLanguage = 'Algerian Darija (written in Arabic script)';
+    } else if (languageCode == 'en') {
+      targetLanguage = 'English ($country accent/dialect)';
+    } else if (languageCode == 'fr') {
+      targetLanguage = 'French ($country accent/dialect)';
+    } else if (languageCode == 'ar') {
+      targetLanguage = 'Arabic ($country dialect)';
+    } else {
+      targetLanguage = '$languageCode ($country accent/dialect)';
+    }
+
     try {
+      final apiKey = 'AIzaSyALLDHf2L4rNWr-8RxiKOyzDM7S2ujSd4s';
       final response = await http.post(
-        Uri.parse('https://openrouter.ai/api/v1/chat/completions'),
+        Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key=$apiKey'),
         headers: {
-          'Authorization':
-              'Bearer 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',
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          'model': 'mistralai/mistral-7b-instruct:free',
-          'messages': [
-            {
-              'role': 'system',
-              'content':
-                  'You are a compassionate and supportive AI assistant for people recovering from addiction. Listen to them, offer empathy, and encourage them gently. Keep responses concise and supportive. Respond in ${LocalizationService().currentLocale.languageCode == 'ar'
-                      ? 'Arabic'
-                      : LocalizationService().currentLocale.languageCode == 'fr'
-                      ? 'French'
-                      : 'English'}.',
+          'system_instruction': {
+            'parts': [
+              {
+                'text':
+                    'You are a compassionate and supportive AI assistant for people recovering from addiction. Listen to them, offer empathy, and encourage them gently. Keep responses concise and supportive.\n\nCRITICAL INSTRUCTIONS:\n1. ALWAYS respond DIRECTLY to the user in exactly this language/dialect: $targetLanguage, REGARDLESS of the language the user types in.\n2. DO NOT output any internal thoughts, translation steps, or structured metadata (like "User input:", "Context:", "Translation:").\n3. Provide ONLY the final, direct conversational reply.'
+              }
+            ]
+          },
+          'contents': _messages.map(
+            (m) => {
+              'role': m['isUser'] ? 'user' : 'model',
+              'parts': [{'text': m['text']}],
             },
-            ..._messages.map(
-              (m) => {
-                'role': m['isUser'] ? 'user' : 'assistant',
-                'content': m['text'],
-              },
-            ),
-          ],
+          ).toList(),
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final botReply = data['choices'][0]['message']['content'];
+        final botReply = data['candidates'][0]['content']['parts'][0]['text'];
 
         if (mounted) {
           setState(() {
@@ -71,9 +81,11 @@ class _ChatScreenState extends State<ChatScreen> {
           });
         }
       } else {
+        print('Gemini API Error: ${response.statusCode} - ${response.body}');
         throw Exception('Failed to load response');
       }
     } catch (e) {
+      print('Chat Error Exception: $e');
       if (mounted) {
         setState(() {
           _messages.add({

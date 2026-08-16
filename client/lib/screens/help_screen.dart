@@ -8,6 +8,10 @@ import '../services/cloudinary_service.dart';
 import '../services/localization_service.dart';
 import '../widgets/language_popup.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:dzair_data_usage/dzair.dart';
+import 'package:dzair_data_usage/langs.dart';
+import 'package:dzair_data_usage/wilaya.dart';
+import 'package:dzair_data_usage/commune.dart';
 import 'specialist_dashboard_screen.dart';
 import 'helper/helper_main_screen.dart';
 
@@ -22,8 +26,18 @@ class _HelpScreenState extends State<HelpScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _wilayaController = TextEditingController();
-  final _communeController = TextEditingController();
+
+  final Dzair _dzair = Dzair();
+  Wilaya? _selectedWilaya;
+  Commune? _selectedCommune;
+  List<Wilaya?> _wilayas = [];
+  List<Commune?> _communes = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _wilayas = _dzair.getWilayat() ?? [];
+  }
 
   String? _selectedSpecialty;
   final List<String> _specialties = [
@@ -112,8 +126,8 @@ class _HelpScreenState extends State<HelpScreen> {
           await ref.set({
             'name': _nameController.text,
             'phone': _phoneController.text,
-            'wilaya': _wilayaController.text,
-            'commune': _communeController.text,
+            'wilaya': _selectedWilaya?.getWilayaName(Language.FR),
+            'commune': _selectedCommune?.getCommuneName(Language.FR),
             'specialty': _selectedSpecialty,
             'idFrontUrl': idFrontUrl,
             'idBackUrl': idBackUrl,
@@ -243,22 +257,64 @@ class _HelpScreenState extends State<HelpScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildTextField(
-                      controller: _wilayaController,
-                      label: LocalizationService().translate('wilaya'),
-                      icon: Icons.map_outlined,
+                    child: DropdownButtonFormField<Wilaya>(
+                      value: _selectedWilaya,
+                      decoration: InputDecoration(
+                        labelText: LocalizationService().translate('wilaya'),
+                        prefixIcon: const Icon(Icons.map_outlined, color: Color(0xFF059669)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade300)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF059669), width: 2)),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                      isExpanded: true,
+                      items: _wilayas.map((wilaya) {
+                        return DropdownMenuItem<Wilaya>(
+                          value: wilaya,
+                          child: Text(wilaya?.getWilayaName(Language.FR) ?? '', overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                      onChanged: (Wilaya? newValue) {
+                        setState(() {
+                          _selectedWilaya = newValue;
+                          _selectedCommune = null;
+                          _communes = newValue?.getCommunes() ?? [];
+                        });
+                      },
+                      validator: (value) => value == null ? LocalizationService().translate('please_enter') : null,
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: _buildTextField(
-                      controller: _communeController,
-                      label: LocalizationService().translate('commune'),
-                      icon: Icons.location_city_outlined,
+                    child: DropdownButtonFormField<Commune>(
+                      value: _selectedCommune,
+                      decoration: InputDecoration(
+                        labelText: LocalizationService().translate('commune'),
+                        prefixIcon: const Icon(Icons.location_city_outlined, color: Color(0xFF059669)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade300)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF059669), width: 2)),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                      isExpanded: true,
+                      items: _communes.map((commune) {
+                        return DropdownMenuItem<Commune>(
+                          value: commune,
+                          child: Text(commune?.getCommuneName(Language.FR) ?? '', overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                      onChanged: (Commune? newValue) {
+                        setState(() {
+                          _selectedCommune = newValue;
+                        });
+                      },
+                      validator: (value) => value == null ? LocalizationService().translate('please_enter') : null,
                     ),
                   ),
                 ],
-              ),
+              ).animate().fadeIn().slideX(begin: -0.1, end: 0),
               const SizedBox(height: 16),
 
               DropdownButtonFormField<String>(
